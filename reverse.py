@@ -1,5 +1,6 @@
 import argparse
 import itertools
+import signal
 import sys
 
 def split(text):
@@ -53,6 +54,10 @@ def reverse(text, character, character_level, word, word_level):
 
 
 if __name__ == '__main__':
+    def sigint_handler(signal, frame):
+        print() # print a newline
+        sys.exit(0)
+    signal.signal(signal.SIGINT, sigint_handler)
     parser = argparse.ArgumentParser(description="Reverse the input")
     parser.add_argument('input', nargs='?', default=sys.stdin, type=argparse.FileType('r'), help="The input file (standard in by default)")
 
