@@ -30,6 +30,7 @@ def merge(words, spaces, wordFirst):
         return ''.join(tk for pair in itertools.zip_longest(words, spaces, fillvalue='') for tk in pair)
     return merge(spaces, words, True)
 
+
 def reverse(text, character, character_level, word, word_level):
     if not text:
         return text
@@ -63,6 +64,7 @@ if __name__ == '__main__':
                 setattr(namespace, "word_level", values)
             setattr(namespace, "character", False)
 
+
     class CharacterAction(argparse.Action):
         def __call__(self, parser, namespace, values, option_string=None):
             if values is not None:
@@ -76,17 +78,26 @@ if __name__ == '__main__':
             raise argparse.ArgumentTypeError("level must be a positive integer")
         return val
 
-    parser.add_argument('-w', '--word', action=WordAction, type=positive_int, nargs='?', help="Reverse W words at a time. Leaves whitespace intact. (default W is 1, meaning all words are reversed)", default=False, metavar='W')
+
+    parser.add_argument('-w', '--word', action=WordAction,
+            type=positive_int, nargs='?',
+            help="Reverse W words at a time. Leaves whitespace intact. (default W is 1, meaning all words are reversed)",
+            default=False, metavar='W')
+
     parser.add_argument('-c', '--character', action=CharacterAction,
             type=positive_int, nargs='?',
             help="Reverse C characters at time. If --word is specified, reverse the characters in a word, and leave the word order intact if W is 1. (default C is 1, meaning all characters are reversed)",
             default=True, metavar='C')
-    parse.add_argument('--ignorelines', action='store_true', default=False, help="Ignore newlines when reversing")
+
+    parser.add_argument('--ignorelines', action='store_true', default=False,
+            help="Ignore newlines when reversing (so that using standard input delays output when you enter EOF, nothing is actually changed in the output)")
+
     parser.set_defaults(word_level=1, character_level=1)
     args = parser.parse_args()
+
     if args.ignorelines:
         text = args.input.read()
-        print(reverse(text, args.character, args.character_level, args.word, args.word_level))
+        print(reverse(text[:len(text)-1], args.character, args.character_level, args.word, args.word_level))
     else:
         for line in args.input:
-            print(reverse(line, args.character, args.character_level, args.word, args.word_level))
+            print(reverse(line[:len(line)-1], args.character, args.character_level, args.word, args.word_level))
