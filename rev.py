@@ -1,7 +1,4 @@
-import argparse
 import itertools
-import signal
-import sys
 
 def split(text):
     words = []
@@ -32,7 +29,7 @@ def merge(words, spaces, wordFirst):
     return merge(spaces, words, True)
 
 
-def reverse(text, character, character_level, word, word_level):
+def rev(text, character, character_level, word, word_level):
     if not text:
         return text
     if word:
@@ -43,7 +40,7 @@ def reverse(text, character, character_level, word, word_level):
             words = sum((words[x:x+word_level][::-1] for x in range(0, len(words), word_level)), [])
         if character:
             for i in range(len(words)):
-                words[i] = reverse(words[i], character, character_level, False, 1)
+                words[i] = rev(words[i], character, character_level, False, 1)
         res = merge(words, spaces, not text[0].isspace())
     elif character:
         if character_level == 1:
@@ -54,10 +51,14 @@ def reverse(text, character, character_level, word, word_level):
 
 
 if __name__ == '__main__':
+    import signal
+    import sys
     def sigint_handler(signal, frame):
         print() # print a newline
         sys.exit(0)
     signal.signal(signal.SIGINT, sigint_handler)
+
+    import argparse
     parser = argparse.ArgumentParser(description="Reverse the input")
     parser.add_argument('input', nargs='?', default=sys.stdin, type=argparse.FileType('r'), help="The input file (standard in by default)")
 
@@ -102,7 +103,7 @@ if __name__ == '__main__':
 
     if args.ignorelines:
         text = args.input.read()
-        print(reverse(text[:len(text)-1], args.character, args.character_level, args.word, args.word_level))
+        print(rev(text[:len(text)-1], args.character, args.character_level, args.word, args.word_level))
     else:
         for line in args.input:
-            print(reverse(line[:len(line)-1], args.character, args.character_level, args.word, args.word_level))
+            print(rev(line[:len(line)-1], args.character, args.character_level, args.word, args.word_level))
