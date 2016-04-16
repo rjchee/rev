@@ -1,39 +1,39 @@
 import itertools
 
-def split(text):
+def split(text, delimset=".,?!:;(){}[]'\"/ \n\t\r\f\v"):
     words = []
-    spaces = []
+    delims = []
     lastword = ''
-    lastspace = ''
+    lastdelim = ''
     for ch in text:
-        if ch.isspace():
+        if ch in delimset:
             if lastword:
                 words.append(lastword)
                 lastword = ''
-            lastspace += ch
+            lastdelim += ch
         else:
-            if lastspace:
-                spaces.append(lastspace)
-                lastspace = ''
+            if lastdelim:
+                delims.append(lastdelim)
+                lastdelim = ''
             lastword += ch
     if lastword:
         words.append(lastword)
-    elif lastspace:
-        spaces.append(lastspace)
-    return words, spaces
+    elif lastdelim:
+        delims.append(lastdelim)
+    return words, delims
 
 
-def merge(words, spaces, wordFirst):
-    if wordFirst:
-        return ''.join(tk for pair in itertools.zip_longest(words, spaces, fillvalue='') for tk in pair)
-    return merge(spaces, words, True)
+def merge(a, b, aFirst):
+    if aFirst:
+        return ''.join(item for pair in itertools.zip_longest(a, b, fillvalue='') for item in pair)
+    return merge(b, a, True)
 
 
-def rev(text, character, character_level, word, word_level):
+def rev(text, character, character_level, word, word_level, delimset=".,?!:;(){}[]'\"/ \n\t\r\f\v"):
     if not text:
         return text
     if word:
-        words, spaces = split(text)
+        words, spaces = split(text, delimset)
         if word_level == 1 and not character:
             words = words[::-1]
         else:
@@ -41,7 +41,7 @@ def rev(text, character, character_level, word, word_level):
         if character:
             for i in range(len(words)):
                 words[i] = rev(words[i], character, character_level, False, 1)
-        res = merge(words, spaces, not text[0].isspace())
+        res = merge(words, spaces, not text[0] in delimset)
     elif character:
         if character_level == 1:
             res = text[::-1]
@@ -50,15 +50,9 @@ def rev(text, character, character_level, word, word_level):
     return res
 
 
-if __name__ == '__main__':
-    import signal
-    import sys
-    def sigint_handler(signal, frame):
-        print() # print a newline
-        sys.exit(0)
-    signal.signal(signal.SIGINT, sigint_handler)
-
+def _parse_args(args=None):
     import argparse
+    import sys
     parser = argparse.ArgumentParser(description="Reverse the input")
     parser.add_argument('input', nargs='?', default=sys.stdin, type=argparse.FileType('r'), help="The input file (standard in by default)")
 
@@ -99,11 +93,31 @@ if __name__ == '__main__':
             help="Ignore newlines when reversing (so that using standard input delays output when you enter EOF, nothing is actually changed in the output)")
 
     parser.set_defaults(word_level=1, character_level=1)
-    args = parser.parse_args()
+    if args is None:
+        return parser.parse_args()
+    return parser.parse_args(args)
 
+
+def _rev_main(args):
     if args.ignorelines:
         text = args.input.read()
-        print(rev(text[:len(text)-1], args.character, args.character_level, args.word, args.word_level))
+        yield rev(text[:len(text)-1], args.character, args.character_level, args.word, args.word_level)
     else:
         for line in args.input:
-            print(rev(line[:len(line)-1], args.character, args.character_level, args.word, args.word_level))
+            yield rev(line[:len(line)-1], args.character, args.character_level, args.word, args.word_level)
+
+
+def main():
+    import signal
+    import sys
+    def sigint_handler(signal, frame):
+        print() # print a newline
+        sys.exit(0)
+    signal.signal(signal.SIGINT, sigint_handler)
+
+    args = _parse_args()
+    for output_line in _rev_main(args):
+        print(output_line)
+
+if __name__ == '__main__':
+    main()

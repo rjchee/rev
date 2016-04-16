@@ -5,8 +5,6 @@ from rev import rev
 
 
 class TestSplit(unittest.TestCase):
-
-
     def test_split(self):
         self.assertEqual(split('abcd ef'), ('abcd ef'.split(), [' ']))
         self.assertEqual(split('123 14412\t\t 717\n\n\r\n'), ('123 14412\t\t 717\n\n\r\n'.split(), [' ', '\t\t ', '\n\n\r\n']))
@@ -14,9 +12,14 @@ class TestSplit(unittest.TestCase):
         self.assertEqual(split('  123 14412\t\t 717\n\n\r\na'), ('  123 14412\t\t 717\n\n\r\na'.split(), ['  ', ' ', '\t\t ', '\n\n\r\n']))
 
 
+    def test_split_delims(self):
+        self.assertEqual(split('/root/home'), ('root home'.split(), ['/', '/']))
+        self.assertEqual(split('www.github.com'), ('www github com'.split(), ['.', '.']))
+        self.assertEqual(split('http://www.github.com'), ('http www github com'.split(), ['://', '.', '.']))
+        self.assertEqual(split('Hi, what is your name?'), (['Hi', 'what', 'is', 'your', 'name'], [', ', ' ', ' ', ' ', '?']))
+
+
 class TestMerge(unittest.TestCase):
-
-
     def test_merge(self):
         self.assertEqual(merge([], [], True), '')
         self.assertEqual(merge(['hi'], [], True), 'hi')
@@ -40,8 +43,6 @@ class TestMerge(unittest.TestCase):
 
 
 class TestReverse(unittest.TestCase):
-    
-
     def test_word1(self):
         self.assertEqual(rev('a b c d e f g', False, 1, True, 1), 'g f e d c b a')
         self.assertEqual(rev('ab bc cd de ef fg gh', False, 1, True, 1), 'gh fg ef de cd bc ab')
