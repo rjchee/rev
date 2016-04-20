@@ -55,6 +55,7 @@ def _parse_args(args=None):
     import sys
     parser = argparse.ArgumentParser(description="Reverse the input")
     parser.add_argument('input', nargs='?', default=sys.stdin, type=argparse.FileType('r'), help="The input file (standard in by default)")
+    parser.add_argument('-o', '--output', nargs='?', default=sys.stdout, type=argparse.FileType('w'), help="The output file (standard out by default)")
 
     
     class WordAction(argparse.Action):
@@ -108,16 +109,18 @@ def _rev_main(args):
 
 
 def main():
+    args = _parse_args()
     import signal
     import sys
     def sigint_handler(signal, frame):
-        print() # print a newline
+        if args.output == sys.stdout:
+            print() # print a newline when ctrl+c happens
         sys.exit(0)
     signal.signal(signal.SIGINT, sigint_handler)
 
-    args = _parse_args()
+
     for output_line in _rev_main(args):
-        print(output_line)
+        print(output_line, file=args.output)
 
 if __name__ == '__main__':
     main()
