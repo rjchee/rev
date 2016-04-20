@@ -1,4 +1,5 @@
 import itertools
+import string
 
 def split(text, delimset=".,?!:;(){}[]'\"/ \n\t\r\f\v"):
     words = []
@@ -29,7 +30,7 @@ def merge(a, b, aFirst):
     return merge(b, a, True)
 
 
-def rev(text, character, character_level, word, word_level, delimset=".,?!:;(){}[]'\"/ \n\t\r\f\v"):
+def rev(text, character, character_level, word, word_level, delimset=string.punctuation + string.whitespace):
     if not text:
         return text
     if word:
@@ -46,7 +47,7 @@ def rev(text, character, character_level, word, word_level, delimset=".,?!:;(){}
         if character_level == 1:
             res = text[::-1]
         else:
-            res = ''.join(text[x:x+character_level][::-1] for x in range(0, len(text), character_level))
+            res = text[0:0].join(text[x:x+character_level][::-1] for x in range(0, len(text), character_level))
     return res
 
 
@@ -54,8 +55,8 @@ def _parse_args(args=None):
     import argparse
     import sys
     parser = argparse.ArgumentParser(description="Reverse the input")
-    parser.add_argument('input', nargs='?', default=sys.stdin, type=argparse.FileType('r'), help="The input file (standard in by default)")
-    parser.add_argument('-o', '--output', nargs='?', default=sys.stdout, type=argparse.FileType('w'), help="The output file (standard out by default)")
+    parser.add_argument('input', nargs='?', default=None, help="The input file (standard in by default)", metavar='IN')
+    parser.add_argument('-o', '--output', default=None, help="The output file (standard out by default)", metavar='OUT')
 
     
     class WordAction(argparse.Action):
@@ -63,15 +64,17 @@ def _parse_args(args=None):
             setattr(namespace, "word", True)
             if values is not None:
                 setattr(namespace, "word_level", values)
-            setattr(namespace, "character", False)
+            if getattr(namespace, "character") is None:
+                setattr(namespace, "character", False)
 
 
-    class CharacterAction(argparse.Action):
-        def __call__(self, parser, namespace, values, option_string=None):
-            if values is not None:
-                setattr(namespace, "character_level", values)
-            setattr(namespace, "character", True)
-
+    def get_action(name):
+        class UnitAction(argparse.Action):
+            def __call__(self, parser, namespace, values, option_string=None):
+                if values is not None:
+                    setattr(namespace, name + '_level', values)
+                setattr(namespace, name, True)
+        return UnitAction
     
     def positive_int(num):
         val = int(num)
@@ -85,22 +88,44 @@ def _parse_args(args=None):
             help="Reverse W words at a time. Leaves whitespace intact. (default W is 1, meaning all words are reversed)",
             default=False, metavar='W')
 
-    parser.add_argument('-c', '--character', action=CharacterAction,
-            type=positive_int, nargs='?',
-            help="Reverse C characters at time. If --word is specified, reverse the characters in a word, and leave the word order intact if W is 1. (default C is 1, meaning all characters are reversed)",
-            default=True, metavar='C')
-
-    parser.add_argument('--ignorelines', action='store_true', default=False,
+    parser.add_argument('--ignorelines', action='store_true',
+            default=False,
             help="Ignore newlines when reversing (so that using standard input delays output when you enter EOF, nothing is actually changed in the output)")
 
-    parser.set_defaults(word_level=1, character_level=1)
-    if args is None:
-        return parser.parse_args()
-    return parser.parse_args(args)
+    parser.add_argument('-c', '--character', action=get_action('character'),
+            type=positive_int, nargs='?',
+            help="Reverse C characters at time. If --word is specified, reverse the characters in a word, and leave the word order intact if W is 1. (default C is 1, meaning all characters are reversed)",
+            default=None, metavar='C')
+
+    parser.add_argument('-b', '--byte', action=get_action('byte'),
+            type=positive_int, nargs='?',
+            help="Reverse B bytes of the input (default B is 1, meaning all bytes are reversed)",
+            default=False, metavar='B')
+
+    parser.set_defaults(word_level=1, character_level=1, byte_level=1)
+    parsed_args = parser.parse_args() if args is None else parser.parse_args(args)
+
+    if parsed_args.byte and (parsed_args.word or parsed_args.character):
+        print('Cannot reverse by both bytes and utf strings! (the --byte flag cannot be used with the --word or --character flags)')
+        sys.exit(1)
+
+    if parsed_args.character is None:
+        parsed_args.character = True
+
+    if parsed_args.byte:
+        parsed_args.input = sys.stdin.buffer if parsed_args.input is None else open(parsed_args.input, 'rb')
+        parsed_args.output = sys.stdout.buffer if parsed_args.output is None else open(parsed_args.output, 'wb')
+    else:
+        parsed_args.input = sys.stdin if parsed_args.input is None else open(parsed_args.input, "r")
+        parsed_args.output = sys.stdout if parsed_args.output is None else open(parsed_args.output, "w")
+    return parsed_args
 
 
 def _rev_main(args):
-    if args.ignorelines:
+    if args.byte:
+        bytestr = args.input.read()
+        yield rev(bytestr[:len(bytestr)-1], True, args.byte_level, False, 1)
+    elif args.ignorelines:
         text = args.input.read()
         yield rev(text[:len(text)-1], args.character, args.character_level, args.word, args.word_level)
     else:
@@ -120,7 +145,10 @@ def main():
 
 
     for output_line in _rev_main(args):
-        print(output_line, file=args.output)
+        if args.byte:
+            args.output.write(output_line)
+        else:
+            print(output_line, file=args.output)
 
 if __name__ == '__main__':
     main()
