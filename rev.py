@@ -1,7 +1,7 @@
 import itertools
 import string
 
-def split(text, delimset=".,?!:;(){}[]'\"/ \n\t\r\f\v"):
+def split(text, delimset=string.punctuation + string.whitespace):
     words = []
     delims = []
     lastword = ''
