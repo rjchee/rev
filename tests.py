@@ -1,7 +1,12 @@
-import unittest
+import argparse
+import contextlib
+import os
 from rev import merge
 from rev import split
 from rev import rev
+from rev import _parse_args
+import sys
+import unittest
 
 
 class TestSplit(unittest.TestCase):
@@ -166,6 +171,161 @@ class TestReverse(unittest.TestCase):
         self.assertEqual(rev('abc def ghi', True, 2, True, 500), 'hgi edf bac')
         self.assertEqual(rev('abc def ghi', True, 500, True, 500), 'ihg fed cba')
         self.assertEqual(rev('abc def ghi\t', True, 500, True, 500), 'ihg fed cba\t')
+
+
+class TestParseArgs(unittest.TestCase):
+    def test_no_args(self):
+        args = _parse_args([])
+        self.assertTrue(args.character)
+        self.assertEqual(args.character_level, 1)
+        self.assertFalse(args.word)
+        self.assertFalse(args.byte)
+        self.assertIs(args.input, sys.stdin)
+        self.assertIs(args.output, sys.stdout)
+
+
+    def test_character_args(self):
+        args = _parse_args(['-c'])
+        self.assertTrue(args.character)
+        self.assertEqual(args.character_level, 1)
+        self.assertFalse(args.word)
+        self.assertFalse(args.byte)
+        self.assertIs(args.input, sys.stdin)
+        self.assertIs(args.output, sys.stdout)
+
+        args = _parse_args(['--character'])
+        self.assertTrue(args.character)
+        self.assertEqual(args.character_level, 1)
+        self.assertFalse(args.word)
+        self.assertFalse(args.byte)
+
+        args = _parse_args(['-c 24'])
+        self.assertTrue(args.character)
+        self.assertEqual(args.character_level, 24)
+        self.assertFalse(args.word)
+        self.assertFalse(args.byte)
+
+
+    def test_word_args(self):
+        args = _parse_args(['-w'])
+        self.assertFalse(args.character)
+        self.assertTrue(args.word)
+        self.assertEqual(args.word_level, 1)
+        self.assertFalse(args.byte)
+        self.assertFalse(args.ignore_lines)
+        self.assertIs(args.input, sys.stdin)
+        self.assertIs(args.output, sys.stdout)
+
+        args = _parse_args(['--word'])
+        self.assertFalse(args.character)
+        self.assertTrue(args.word)
+        self.assertEqual(args.word_level, 1)
+        self.assertFalse(args.byte)
+
+        args = _parse_args('--word 3'.split())
+        self.assertFalse(args.character)
+        self.assertTrue(args.word)
+        self.assertEqual(args.word_level, 3)
+        self.assertFalse(args.byte)
+
+    def test_wc(self):
+        args = _parse_args('-w -c'.split())
+        self.assertTrue(args.word)
+        self.assertEqual(args.word_level, 1)
+        self.assertTrue(args.character)
+        self.assertEqual(args.character_level, 1)
+        self.assertFalse(args.ignore_lines)
+
+        args = _parse_args('-c --word'.split())
+        self.assertTrue(args.word)
+        self.assertEqual(args.word_level, 1)
+        self.assertTrue(args.character)
+        self.assertEqual(args.character_level, 1)
+        self.assertFalse(args.ignore_lines)
+
+        args = _parse_args('--word -c 10 --ignore-lines'.split())
+        self.assertTrue(args.word)
+        self.assertEqual(args.word_level, 1)
+        self.assertTrue(args.character)
+        self.assertEqual(args.character_level, 10)
+        self.assertTrue(args.ignore_lines)
+
+        args = _parse_args('--ignore-lines -c 3 --word 10'.split())
+        self.assertTrue(args.word)
+        self.assertEqual(args.word_level, 10)
+        self.assertTrue(args.character)
+        self.assertEqual(args.character_level, 3)
+        self.assertTrue(args.ignore_lines)
+
+
+    def test_bytes(self):
+        args =  _parse_args(['-b'])
+        self.assertTrue(args.byte)
+        self.assertEqual(args.byte_level, 1)
+        self.assertFalse(args.character)
+        self.assertFalse(args.word)
+        self.assertIs(args.input, sys.stdin.buffer)
+        self.assertIs(args.output, sys.stdout.buffer)
+
+        args =  _parse_args(['--byte'])
+        self.assertTrue(args.byte)
+        self.assertEqual(args.byte_level, 1)
+        self.assertFalse(args.character)
+        self.assertFalse(args.word)
+
+        args =  _parse_args('--byte 4'.split())
+        self.assertTrue(args.byte)
+        self.assertEqual(args.byte_level, 4)
+        self.assertFalse(args.character)
+        self.assertFalse(args.word)
+
+
+    @contextlib.contextmanager
+    def _nostderr():
+        old_stderr = sys.stderr
+        sys.stderr = open(os.devnull, 'w')
+        try:
+            yield
+        finally:
+            sys.stderr.close()
+            sys.stderr = old_stderr
+
+
+    @classmethod
+    def _parse_err(cls, arg_str):
+        with cls._nostderr():
+            _parse_args(arg_str.split())
+
+
+    def test_err(self):
+        with self.assertRaises(argparse.ArgumentError):
+            self._parse_err('-b -w')
+        with self.assertRaises(argparse.ArgumentError):
+            self._parse_err('-b -c')
+        with self.assertRaises(argparse.ArgumentError):
+            self._parse_err('-c -b')
+        with self.assertRaises(argparse.ArgumentError):
+            self._parse_err('-w -b')
+        with self.assertRaises(SystemExit):
+            self._parse_err('-w 0')
+        with self.assertRaises(SystemExit):
+            self._parse_err('-w 1.3')
+        with self.assertRaises(SystemExit):
+            self._parse_err('-c 0')
+        with self.assertRaises(SystemExit):
+            self._parse_err('-c 1.3')
+        with self.assertRaises(SystemExit):
+            self._parse_err('-c -1.3')
+        with self.assertRaises(SystemExit):
+            self._parse_err('-c -1')
+        with self.assertRaises(SystemExit):
+            self._parse_err('-b -1')
+        with self.assertRaises(SystemExit):
+            self._parse_err('-b 0')
+        with self.assertRaises(SystemExit):
+            self._parse_err('-b 1.3')
+
+
 
 
 if __name__ == '__main__':
