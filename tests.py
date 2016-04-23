@@ -374,20 +374,20 @@ class TestParseArgs(unittest.TestCase):
 
 
     def test_delims(self):
-        args = _parse_args('-w --include-chars abcdefghi'.split())
-        self.assertEqual(set(ch for ch in args.include_chars), set(ch for ch in "abcdefghi"))
+        args = _parse_args('-w --include-chars !abcdefghi'.split())
+        self.assertEqual(set(ch for ch in args.include_chars), set(ch for ch in "!abcdefghi"))
         self.assertEqual(set(ch for ch in args.exclude_chars), set())
         self.assertTrue(args.word)
         self.assertEqual(args.word_level, 1)
-        for ch in 'abcdefghi':
+        for ch in '!abcdefghi':
             self.assertTrue(ch in args.delimset)
 
-        args = _parse_args(['--word', '--exclude-chars', "./, "])
-        self.assertEqual(set(ch for ch in args.exclude_chars), set(ch for ch in "./, "))
+        args = _parse_args(['--word', '--exclude-chars', "./, \n\ta"])
+        self.assertEqual(set(ch for ch in args.exclude_chars), set(ch for ch in "./, \n\ta"))
         self.assertEqual(set(ch for ch in args.include_chars), set())
         self.assertTrue(args.word)
         self.assertEqual(args.word_level, 1)
-        for ch in "./,":
+        for ch in "./, \n\ta":
             self.assertFalse(ch in args.delimset)
 
         args = _parse_args('--include-chars 012345678 --exclude-chars $%@!# -w 4'.split())
