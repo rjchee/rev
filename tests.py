@@ -182,6 +182,49 @@ class TestParseArgs(unittest.TestCase):
         self.assertFalse(args.byte)
         self.assertIs(args.input, sys.stdin)
         self.assertIs(args.output, sys.stdout)
+        self.assertEqual(args.include_chars, '')
+        self.assertEqual(args.exclude_chars, '')
+
+
+    def test_io(self):
+        import tempfile
+        input_file = tempfile.NamedTemporaryFile(delete=False)
+        input_file.write(b'testing testing')
+        input_file.close()
+        args = _parse_args([input_file.name])
+        self.assertEqual(args.input.read(), 'testing testing')
+        args.input.close()
+        self.assertIs(args.output, sys.stdout)
+
+        output_file = tempfile.NamedTemporaryFile(delete=False)
+        args = _parse_args(['--output', output_file.name])
+        args.output.write('abc def')
+        args.output.close()
+        self.assertEqual(output_file.read(), b'abc def')
+        output_file.close()
+        self.assertIs(args.input, sys.stdin)
+
+        input_file = tempfile.NamedTemporaryFile(delete=False)
+        input_file.write(b'this')
+        input_file.close()
+        output_file = tempfile.NamedTemporaryFile(delete=False)
+        args = _parse_args([input_file.name, '--output', output_file.name])
+        self.assertEqual(args.input.read(), 'this')
+        args.input.close()
+        args.output.write('that')
+        args.output.close()
+        self.assertEqual(output_file.read(), b'that')
+        output_file.close()
+
+        same_file = tempfile.NamedTemporaryFile(delete=False)
+        args = _parse_args(['--output', same_file.name, same_file.name])
+        args.output.write('goodbye')
+        args.output.close()
+        self.assertEqual(same_file.read(), b'goodbye')
+        same_file.write(b'hello')
+        same_file.close()
+        self.assertEqual(args.input.read(), 'goodbyehello')
+        args.input.close()
 
 
     def test_character_args(self):
@@ -324,8 +367,38 @@ class TestParseArgs(unittest.TestCase):
             self._parse_err('-b 0')
         with self.assertRaises(SystemExit):
             self._parse_err('-b 1.3')
+        with self.assertRaises(SystemExit):
+            self._parse_err('-w --include-chars')
+        with self.assertRaises(SystemExit):
+            self._parse_err('-w --exclude-chars')
 
 
+    def test_delims(self):
+        args = _parse_args('-w --include-chars abcdefghi'.split())
+        self.assertEqual(set(ch for ch in args.include_chars), set(ch for ch in "abcdefghi"))
+        self.assertEqual(set(ch for ch in args.exclude_chars), set())
+        self.assertTrue(args.word)
+        self.assertEqual(args.word_level, 1)
+        for ch in 'abcdefghi':
+            self.assertTrue(ch in args.delimset)
+
+        args = _parse_args(['--word', '--exclude-chars', "./, "])
+        self.assertEqual(set(ch for ch in args.exclude_chars), set(ch for ch in "./, "))
+        self.assertEqual(set(ch for ch in args.include_chars), set())
+        self.assertTrue(args.word)
+        self.assertEqual(args.word_level, 1)
+        for ch in "./,":
+            self.assertFalse(ch in args.delimset)
+
+        args = _parse_args('--include-chars 012345678 --exclude-chars $%@!# -w 4'.split())
+        self.assertEqual(set(ch for ch in args.exclude_chars), set(ch for ch in "$%@!#"))
+        self.assertEqual(set(ch for ch in args.include_chars), set(str(i) for i in range(9)))
+        self.assertTrue(args.word)
+        self.assertEqual(args.word_level, 4)
+        for i in range(9):
+            self.assertTrue(str(i) in args.delimset)
+        for ch in "$%@!#":
+            self.assertFalse(ch in args.delimset)
 
 
 if __name__ == '__main__':

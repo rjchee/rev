@@ -1,7 +1,9 @@
 import itertools
 import string
 
-def split(text, delimset=string.punctuation + string.whitespace):
+__delimset = string.punctuation + string.whitespace
+
+def split(text, delimset=__delimset):
     words = []
     delims = []
     lastword = ''
@@ -30,7 +32,7 @@ def merge(a, b, aFirst):
     return merge(b, a, True)
 
 
-def rev(text, character, character_level, word, word_level, delimset=string.punctuation + string.whitespace):
+def rev(text, character, character_level, word, word_level, delimset=__delimset):
     if not text:
         return text
     if word:
@@ -83,33 +85,31 @@ def _parse_args(args=None):
         return val
 
 
-    parser.add_argument('-w', '--word', action=WordAction,
-            type=positive_int, nargs='?',
-            help="Reverse W words at a time. Leaves whitespace intact. (default W is 1, meaning all words are reversed)",
-            default=False, metavar='W')
+    parser.add_argument('-w', '--word', action=WordAction, type=positive_int,
+            help="Reverse W words at a time. Leaves delimiters (whitespace and punctuation by default) intact. (default W is 1, meaning all words are reversed)",
+            nargs='?', default=False, metavar='W')
 
-    parser.add_argument('--ignorelines', action='store_true',
-            default=False,
+    parser.add_argument('--ignore-lines', action='store_true', default=False,
             help="Ignore newlines when reversing (so that using standard input delays output when you enter EOF, nothing is actually changed in the output)")
 
+    parser.add_argument('--include-chars', default='', help="Use the characters as delimiters to split on.")
+    parser.add_argument('--exclude-chars', default='', help="Do not use the characters provided as delimiters.")
     parser.add_argument('-c', '--character', action=get_action('character'),
             type=positive_int, nargs='?',
             help="Reverse C characters at time. If --word is specified, reverse the characters in a word, and leave the word order intact if W is 1. (default C is 1, meaning all characters are reversed)",
             default=None, metavar='C')
 
-    parser.add_argument('-b', '--byte', action=get_action('byte'),
-            type=positive_int, nargs='?',
+    byte_arg = parser.add_argument('-b', '--byte', action=get_action('byte'), type=positive_int,
             help="Reverse B bytes of the input (default B is 1, meaning all bytes are reversed)",
-            default=False, metavar='B')
+            nargs='?', default=False, metavar='B')
 
     parser.set_defaults(word_level=1, character_level=1, byte_level=1)
     parsed_args = parser.parse_args() if args is None else parser.parse_args(args)
 
     if parsed_args.byte and (parsed_args.word or parsed_args.character):
-        print('Cannot reverse by both bytes and utf strings! (the --byte flag cannot be used with the --word or --character flags)')
-        sys.exit(1)
+        raise argparse.ArgumentError(byte_arg, 'Cannot reverse by both bytes and utf strings! (the --byte flag cannot be used with the --word or --character flags)')
 
-    if parsed_args.character is None:
+    if parsed_args.character is None and not parsed_args.byte:
         parsed_args.character = True
 
     if parsed_args.byte:
@@ -118,6 +118,7 @@ def _parse_args(args=None):
     else:
         parsed_args.input = sys.stdin if parsed_args.input is None else open(parsed_args.input, "r")
         parsed_args.output = sys.stdout if parsed_args.output is None else open(parsed_args.output, "w")
+        parsed_args.delimset = ''.join(filter(lambda x: x not in parsed_args.exclude_chars, __delimset + parsed_args.include_chars))
     return parsed_args
 
 
@@ -125,12 +126,14 @@ def _rev_main(args):
     if args.byte:
         bytestr = args.input.read()
         yield rev(bytestr[:len(bytestr)-1], True, args.byte_level, False, 1)
-    elif args.ignorelines:
+    elif args.ignore_lines:
         text = args.input.read()
-        yield rev(text[:len(text)-1], args.character, args.character_level, args.word, args.word_level)
+        yield rev(text[:len(text)-1], args.character, args.character_level,
+                args.word, args.word_level, args.delimset)
     else:
         for line in args.input:
-            yield rev(line[:len(line)-1], args.character, args.character_level, args.word, args.word_level)
+            yield rev(line[:len(line)-1], args.character, args.character_level,
+                    args.word, args.word_level, args.delimset)
 
 
 def main():
