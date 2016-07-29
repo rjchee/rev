@@ -1,12 +1,12 @@
 # rev
 ```rev``` is a Python command line utility that aims to provide more string reversing functionality than the one that already exists.
 
-Usage:
+## Usage:
 ```sh
 rev # Read strings line by line from standard input and reverse them
 ```
 
-Reversing words:
+### Reversing Words:
 ```sh
 rev -w # Reverse the word order
 ```
@@ -18,21 +18,25 @@ echo "I'm cool" | rev -w --exclude-chars "'"
 cool I'm
 ```
 
+### Reversing Characters:
 If the goal is to reverse both the word order and have each word be reversed, you can specify the ```-c``` flag to also reverse the characters in each word
 ```sh
 rev -w -c # Reverse the word order and the characters in each word
 ```
 
-Input:
+### File Input:
 ```rev``` takes a positional argument to denote the name of the file to read in from.
 ```sh
 rev file.txt # Output the contents of the file with each line reversed
 ```
+
+### Ignoring Newline Characters
 The flag ```--ignore-newlines``` ignores newlines and reverses the entire string.
 ```sh
 rev file.txt --ignore-newlines # Reverse everything in the file, ignoring newlines
 ```
 
+### Full Usage
 The full usage is as follows:
 ```
 usage: rev.py [-h] [-o OUT] [-w [W]] [--ignore-lines]
@@ -65,4 +69,14 @@ optional arguments:
                         characters are reversed)
   -b [B], --byte [B]    Reverse B bytes of the input (default B is 1, meaning
                         all bytes are reversed)
+```
+
+## Installing
+```rev``` can be installed with pip.
+```sh
+sudo -H pip3 install rev
+```
+After installing, you may need to alias ```rev``` to be ```python3 rev.py``` wherever pip installs packages by default. You can discover the locations where pip installs packages with
+```sh
+python3 -c "import site; print(site.getsitepackages())"
 ```
